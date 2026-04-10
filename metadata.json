@@ -1,0 +1,5 @@
+{
+  "name": "순천은행 농기계 판독 시스템",
+  "description": "농기계 보험 관리를 위한 AI 기반 농기계 사진 판독 및 분류 서비스",
+  "requestFramePermissions": ["camera"]
+}

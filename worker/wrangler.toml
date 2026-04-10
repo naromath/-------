@@ -1,0 +1,7 @@
+name = "machinery-api-proxy"
+main = "index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+# GEMINI_API_KEY는 wrangler secret으로 설정합니다 (아래 명령어 참고)
+# wrangler secret put GEMINI_API_KEY
