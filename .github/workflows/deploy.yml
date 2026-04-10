@@ -47,34 +47,43 @@ jobs:
         uses: actions/deploy-pages@v4
 
   deploy-worker:
-    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' && secrets.GEMINI_API_KEY != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install Worker dependencies
-        run: npm --prefix worker install
-
-      - name: Validate required Worker secrets
+      - name: Check Worker secrets
+        id: worker-secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
+          missing_keys=()
           for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID GEMINI_API_KEY; do
             if [ -z "${!key:-}" ]; then
-              echo "::error::Missing required secret: $key"
-              exit 1
+              missing_keys+=("$key")
             fi
           done
+          if [ ${#missing_keys[@]} -gt 0 ]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping worker deploy. Missing secrets: ${missing_keys[*]}"
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.worker-secrets.outputs.should_deploy == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Worker dependencies
+        if: steps.worker-secrets.outputs.should_deploy == 'true'
+        run: npm --prefix worker install
 
       - name: Sync Worker secrets
+        if: steps.worker-secrets.outputs.should_deploy == 'true'
         working-directory: worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -85,6 +94,7 @@ jobs:
           printf '%s' "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY
 
       - name: Deploy Worker
+        if: steps.worker-secrets.outputs.should_deploy == 'true'
         working-directory: worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
