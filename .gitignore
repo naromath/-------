@@ -8,3 +8,7 @@ coverage/
 !.env.example
 worker/node_modules/
 worker/package-lock.json
+worker/.wrangler/
+worker/.dev.vars
+worker/.dev.vars.*
+!worker/.dev.vars.example

@@ -7,7 +7,8 @@
 
 // Worker API 엔드포인트 (배포 후 실제 URL로 교체됨)
 // 환경변수 또는 빌드 시 주입
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8787";
+// 로컬 개발은 기본적으로 Vite 프록시(/api -> 로컬 Worker)를 사용합니다.
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const AGRICULTURAL_MACHINERY = [
   "동력경운기",

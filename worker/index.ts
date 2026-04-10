@@ -6,7 +6,49 @@
  */
 
 interface Env {
-  GEMINI_API_KEY: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL?: string;
+}
+
+interface GeminiRequestBody {
+  contents: Array<{
+    parts: Array<
+      | { text: string }
+      | {
+          inlineData: {
+            data: string;
+            mimeType: string;
+          };
+        }
+    >;
+  }>;
+  generationConfig: {
+    responseMimeType: string;
+    responseJsonSchema: {
+      type: string;
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+  };
+}
+
+async function callGemini(
+  env: Env,
+  requestBody: GeminiRequestBody
+): Promise<Response> {
+  if (!env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
+  }
+  const model = env.GEMINI_MODEL || "gemini-2.5-flash";
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}` +
+    `:generateContent?key=${env.GEMINI_API_KEY}`;
+
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
+  });
 }
 
 const AGRICULTURAL_MACHINERY = [
@@ -15,19 +57,9 @@ const AGRICULTURAL_MACHINERY = [
   "농용로우더", "농용동력운반차", "항공방제기", "지자체 소유 임대농기계"
 ];
 
-// CORS 허용 출처 (GitHub Pages + 로컬 개발)
-const ALLOWED_ORIGINS = [
-  "https://naromath.github.io",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
-function getCorsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("Origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.find(o => origin.startsWith(o)) || ALLOWED_ORIGINS[0];
-  
+function getCorsHeaders(_request: Request): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -59,10 +91,11 @@ export default {
       );
     }
 
-    // API 키 확인
     if (!env.GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "API key not configured on server" }),
+        JSON.stringify({
+          error: "API 설정이 없습니다. GEMINI_API_KEY를 설정하세요.",
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -127,7 +160,7 @@ export default {
         },
       }));
 
-      const geminiRequestBody = {
+      const geminiRequestBody: GeminiRequestBody = {
         contents: [
           {
             parts: [
@@ -138,21 +171,21 @@ export default {
         ],
         generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
+          responseJsonSchema: {
+            type: "object",
             properties: {
-              machineryType: { type: "STRING" },
-              confidence: { type: "NUMBER" },
-              reason: { type: "STRING" },
-              features: { type: "ARRAY", items: { type: "STRING" } },
+              machineryType: { type: "string" },
+              confidence: { type: "number" },
+              reason: { type: "string" },
+              features: { type: "array", items: { type: "string" } },
               angleAnalysis: {
-                type: "ARRAY",
+                type: "array",
                 items: {
-                  type: "OBJECT",
+                  type: "object",
                   properties: {
-                    photoNumber: { type: "NUMBER" },
-                    detectedAngle: { type: "STRING" },
-                    observations: { type: "STRING" },
+                    photoNumber: { type: "integer" },
+                    detectedAngle: { type: "string" },
+                    observations: { type: "string" },
                   },
                   required: ["photoNumber", "detectedAngle", "observations"],
                 },
@@ -163,19 +196,24 @@ export default {
         },
       };
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
-
-      const geminiResponse = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiRequestBody),
-      });
+      const geminiResponse = await callGemini(env, geminiRequestBody);
 
       if (!geminiResponse.ok) {
         const errorText = await geminiResponse.text();
         console.error("Gemini API Error:", errorText);
+
+        let detailedMessage = `Gemini API 오류: ${geminiResponse.status}`;
+        try {
+          const parsed = JSON.parse(errorText) as { error?: { message?: string } };
+          if (parsed?.error?.message) {
+            detailedMessage = `Gemini API 오류 (${geminiResponse.status}): ${parsed.error.message}`;
+          }
+        } catch {
+          // JSON 파싱이 불가능한 경우 기본 메시지를 사용합니다.
+        }
+
         return new Response(
-          JSON.stringify({ error: `Gemini API 오류: ${geminiResponse.status}` }),
+          JSON.stringify({ error: detailedMessage }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

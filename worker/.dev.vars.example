@@ -1,0 +1,5 @@
+# 로컬 wrangler dev 전용 설정 파일 예시
+# 파일명은 반드시 worker/.dev.vars 로 생성해서 사용하세요.
+
+# 필수: Gemini API 키
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"

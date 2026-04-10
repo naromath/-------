@@ -3,5 +3,8 @@ main = "index.ts"
 compatibility_date = "2025-01-01"
 
 [vars]
-# GEMINI_API_KEY는 wrangler secret으로 설정합니다 (아래 명령어 참고)
+# 기본 모델 (필요시 변경)
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# 필수 secret
 # wrangler secret put GEMINI_API_KEY
