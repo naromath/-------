@@ -55,10 +55,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: worker/package-lock.json
 
       - name: Install Worker dependencies
-        run: npm --prefix worker ci
+        run: npm --prefix worker install
 
       - name: Validate required Worker secrets
         env:
