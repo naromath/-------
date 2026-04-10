@@ -6,7 +6,7 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    base: '/순천은행-농기계-판독-시스템/',
+    base: '/-------/',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
